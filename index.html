@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart School Admin | โรงเรียนบ้านเนินทราย</title>
+  
+  <!-- Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- PDF.js สำหรับอ่านไฟล์บนเบราว์เซอร์ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body { 
+      font-family: 'Kanit', sans-serif;
+      /* ธีมสี Dark Mode + กรมท่า + เลือดหมู */
+      background: linear-gradient(135deg, #0F172A 0%, #1E1018 50%, #311322 100%);
+      background-attachment: fixed;
+      color: #E2E8F0;
+    }
+    /* Glassmorphism Effect */
+    .glass {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .text-gold { color: #D4AF37; }
+    .border-gold { border-color: #D4AF37; }
+    .bg-burgundy { background-color: #800020; }
+    
+    .view-section { display: none; animation: fadeIn 0.4s ease-in-out; }
+    .view-section.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- หน้า Login -->
+  <div id="view-login" class="view-section active min-h-screen flex items-center justify-center p-4">
+    <div class="glass w-full max-w-md rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      <!-- Decoration -->
+      <div class="absolute -top-10 -right-10 w-32 h-32 bg-burgundy rounded-full blur-3xl opacity-50"></div>
+      <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-900 rounded-full blur-3xl opacity-50"></div>
+      
+      <div class="text-center mb-8 relative z-10">
+        <div class="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]">
+          <i class="fa-solid fa-school text-3xl text-gold"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-white">Smart Admin</h2>
+        <p class="text-sm text-gray-400">โรงเรียนบ้านเนินทราย</p>
+      </div>
+      <form id="loginForm" class="space-y-5 relative z-10">
+        <div>
+          <label class="block text-sm font-medium text-gray-300">ชื่อผู้ใช้งาน</label>
+          <input type="text" id="loginUser" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" value="admin" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300">รหัสผ่าน</label>
+          <input type="password" id="loginPass" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" required>
+        </div>
+        <button type="submit" class="w-full bg-burgundy hover:bg-red-900 text-white font-bold py-3 rounded-xl shadow-lg transition border border-red-700">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- หน้า Dashboard หลัก -->
+  <div id="view-main" class="view-section min-h-screen">
+    <!-- Hero Section (Notification Bar) -->
+    <div class="bg-gradient-to-r from-burgundy to-blue-900 border-b border-gold/30 p-3 shadow-lg flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-bell text-gold animate-bounce"></i>
+        <span class="text-sm font-medium text-white">ระบบอัจฉริยะพร้อมใช้งาน | แผงควบคุมสำหรับผู้บริหาร</span>
+      </div>
+      <button onclick="logout()" class="text-xs bg-black/30 hover:bg-black/50 px-3 py-1 rounded text-white border border-white/20 transition">ออกจากระบบ</button>
+    </div>
+
+    <div class="flex flex-col md:flex-row p-4 md:p-6 gap-6 h-[calc(100vh-50px)]">
+      
+      <!-- ฝั่งซ้าย: โซนอัปโหลดและวิเคราะห์ PDF -->
+      <div class="w-full md:w-1/3 glass rounded-2xl p-6 flex flex-col gap-4">
+        <h2 class="text-xl font-bold text-gold flex items-center gap-2">
+          <i class="fa-solid fa-robot"></i> ผู้ช่วย AI วิเคราะห์งาน
+        </h2>
+        <p class="text-sm text-gray-300">อัปโหลดหนังสือสั่งการ (PDF) ระบบจะอ่านข้อความและแยกฝ่ายให้โดยอัตโนมัติ</p>
+        
+        <div class="glass-panel border-dashed border-2 border-gray-500 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-gold transition cursor-pointer relative" id="dropZone">
+          <input type="file" id="pdfUpload" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+          <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-3"></i>
+          <p class="font-medium">ลากไฟล์ PDF มาวางที่นี่<br>หรือคลิกเพื่อเลือกไฟล์</p>
+        </div>
+        
+        <!-- สถานะการประมวลผล -->
+        <div id="processStatus" class="hidden glass-panel p-4 rounded-xl mt-4 border-l-4 border-gold">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-notch fa-spin text-gold text-xl"></i>
+            <div>
+              <p class="font-bold text-sm" id="statusTitle">กำลังอ่านข้อความ...</p>
+              <p class="text-xs text-gray-400" id="statusDesc">ใช้เวลาประมาณ 5-10 วินาที</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ฝั่งขวา: Timeline และรายการงาน -->
+      <div class="w-full md:w-2/3 glass rounded-2xl p-6 flex flex-col">
+        <h2 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
+          <i class="fa-solid fa-timeline text-gold"></i> ไทม์ไลน์งานล่าสุด
+        </h2>
+        
+        <!-- รายการงานที่วิเคราะห์เสร็จ (จำลองการ์ดงาน) -->
+        <div id="taskList" class="flex-1 overflow-y-auto pr-2 space-y-4">
+          <div class="text-center text-gray-500 mt-10">
+            <i class="fa-solid fa-inbox text-5xl mb-3 opacity-50"></i>
+            <p>ยังไม่มีงานที่ถูกวิเคราะห์ในเซสชันนี้</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- โค้ด JavaScript -->
+  <script>
+    // 🔴 เปลี่ยน URL ตรงนี้เป็น Web App URL ที่ได้จาก Phase 2
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbww1bI9fsDabpMBopvgaQtPxTGbUTRvYrmKHxLfo-mgN7dAo7Hs3ECPhL-fdDjLq7iU_Q/exec';
+    
+    let currentUser = '';
+    let currentPass = '';
+
+    // ตั้งค่า PDF.js Worker (จำเป็นสำหรับการอ่าน PDF บนหน้าเว็บ)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    // จัดการการ Login
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUser').value;
+      const p = document.getElementById('loginPass').value;
+
+      Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
+      
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'login', username: u, password: p })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentUser = u;
+          currentPass = p;
+          Swal.close();
+          document.getElementById('view-login').classList.remove('active');
+          document.getElementById('view-main').classList.add('active');
+          
+          // ขออนุญาตแจ้งเตือนบน Windows/Browser (เตรียมไว้สำหรับ Phase 4)
+          if (Notification.permission !== 'granted') Notification.requestPermission();
+          
+        } else {
+          Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: data.message, background: '#1E293B', color: '#fff' });
+        }
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'การเชื่อมต่อล้มเหลว', text: 'โปรดตรวจสอบ URL ของ API', background: '#1E293B', color: '#fff' });
+      }
+    });
+
+    function logout() {
+      currentUser = ''; currentPass = '';
+      document.getElementById('loginForm').reset();
+      document.getElementById('view-main').classList.remove('active');
+      document.getElementById('view-login').classList.add('active');
+    }
+
+    // จัดการการอัปโหลดและอ่าน PDF
+    document.getElementById('pdfUpload').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const statusEl = document.getElementById('processStatus');
+      const titleEl = document.getElementById('statusTitle');
+      const descEl = document.getElementById('statusDesc');
+      statusEl.classList.remove('hidden');
+
+      try {
+        // 1. อ่าน Text จาก PDF บนหน้าเว็บ (Client-Side OCR)
+        titleEl.textContent = "1/2 กำลังสกัดข้อความจาก PDF...";
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+
+        if (fullText.trim().length === 0) throw new Error("ไม่พบข้อความในไฟล์ PDF (อาจเป็นไฟล์รูปภาพ)");
+
+        // 2. ส่ง Text ไปให้ Gemini AI ใน GAS ประมวลผล
+        titleEl.textContent = "2/2 AI กำลังวิเคราะห์จัดหมวดหมู่...";
+        descEl.textContent = "เชื่อมต่อระบบฐานข้อมูล...";
+
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'analyze_text',
+            username: currentUser,
+            password: currentPass,
+            text: fullText.substring(0, 5000), // จำกัดความยาวส่งให้ AI ไม่เกิน 5000 ตัวอักษร
+            fileName: file.name
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          statusEl.classList.add('hidden');
+          Swal.fire({ icon: 'success', title: 'วิเคราะห์สำเร็จ!', text: 'ระบบแยกฝ่ายเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false, background: '#1E293B', color: '#fff' });
+          
+          // สร้างการ์ดงานแสดงบน Dashboard
+          appendTaskCard(data.data, data.taskId, file.name);
+          
+        } else {
+          throw new Error(data.message);
+        }
+
+      } catch (err) {
+        statusEl.classList.add('hidden');
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message, background: '#1E293B', color: '#fff' });
+      }
+      
+      // ล้างค่า input file
+      e.target.value = '';
+    });
+
+    // สร้าง UI การ์ดผลลัพธ์จาก AI
+    function appendTaskCard(aiData, taskId, fileName) {
+      const list = document.getElementById('taskList');
+      // ลบข้อความ "ยังไม่มีงาน" ออกถ้ามี
+      if(list.innerHTML.includes('ยังไม่มีงาน')) list.innerHTML = '';
+
+      let colorClass = 'border-blue-500';
+      if(aiData.department === 'ฝ่ายวิชาการ') colorClass = 'border-green-500';
+      if(aiData.department === 'ฝ่ายงบประมาณ') colorClass = 'border-yellow-500';
+      if(aiData.department === 'ฝ่ายบริหารงานบุคคล') colorClass = 'border-purple-500';
+      
+      const card = `
+        <div class="glass-panel rounded-xl p-5 border-l-4 ${colorClass} flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animation-fadeIn">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-gray-800 text-xs px-2 py-1 rounded border border-gray-600">${taskId}</span>
+              <span class="text-xs text-gray-400"><i class="fa-solid fa-file-pdf"></i> ${fileName}</span>
+            </div>
+            <h3 class="text-lg font-bold text-white">${aiData.title}</h3>
+            <p class="text-sm text-gray-300 mb-2">${aiData.summary}</p>
+            <span class="inline-block bg-white/10 text-gold px-3 py-1 rounded-full text-sm font-medium border border-gold/30">
+              <i class="fa-solid fa-sitemap"></i> ${aiData.department}
+            </span>
+          </div>
+          <div class="flex gap-2 w-full md:w-auto">
+            <!-- ปุ่มเตรียมพร้อมสำหรับ Phase 4 -->
+            <button class="flex-1 md:flex-none bg-burgundy hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition border border-red-500">
+              <i class="fa-solid fa-calendar-plus"></i> จ่ายงานลงปฏิทิน
+            </button>
+          </div>
+        </div>
+      `;
+      list.insertAdjacentHTML('afterbegin', card);
+    }
+  </script>
+</body>
+</html>
