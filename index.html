@@ -21,7 +21,6 @@
     .glass {
       background: rgba(15, 23, 42, 0.6);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
@@ -31,7 +30,6 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .text-gold { color: #D4AF37; }
-    .border-gold { border-color: #D4AF37; }
     .bg-burgundy { background-color: #800020; }
     .view-section { display: none; animation: fadeIn 0.4s ease-in-out; }
     .view-section.active { display: block; }
@@ -40,6 +38,7 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
+  <!-- หน้า Login -->
   <div id="view-login" class="view-section active min-h-screen flex items-center justify-center p-4">
     <div class="glass w-full max-w-md rounded-3xl p-8 shadow-2xl relative overflow-hidden">
       <div class="absolute -top-10 -right-10 w-32 h-32 bg-burgundy rounded-full blur-3xl opacity-50"></div>
@@ -53,22 +52,22 @@
         <p class="text-sm text-gray-400">โรงเรียนบ้านเนินทราย</p>
       </div>
       
-      <!-- 🚨 แก้ไขให้ปลดการ Submit อัตโนมัติ ป้องกันการรีเฟรชหน้าเว็บ -->
-      <form id="loginForm" onsubmit="return false;" class="space-y-5 relative z-10">
+      <!-- 🚨 ถอดแท็ก form ออกทั้งหมด เปลี่ยนเป็น div เพื่อป้องกันหน้าเว็บ Refresh เอง 100% -->
+      <div class="space-y-5 relative z-10">
         <div>
           <label class="block text-sm font-medium text-gray-300">ชื่อผู้ใช้งาน</label>
-          <input type="text" id="loginUser" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" value="admin" required>
+          <input type="text" id="loginUser" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" value="admin">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300">รหัสผ่าน</label>
-          <input type="password" id="loginPass" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" required>
+          <input type="password" id="loginPass" class="w-full p-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-gold text-white" onkeypress="if(event.key === 'Enter') handleLogin();">
         </div>
-        <!-- 🚨 เปลี่ยนชนิดปุ่มเป็น Button และเรียกฟังก์ชันโดยตรง -->
         <button type="button" onclick="handleLogin()" class="w-full bg-burgundy hover:bg-red-900 text-white font-bold py-3 rounded-xl shadow-lg transition border border-red-700">เข้าสู่ระบบ</button>
-      </form>
+      </div>
     </div>
   </div>
 
+  <!-- หน้า Dashboard -->
   <div id="view-main" class="view-section min-h-screen">
     <div class="bg-gradient-to-r from-burgundy to-blue-900 border-b border-gold/30 p-3 shadow-lg flex justify-between items-center">
       <div class="flex items-center gap-3">
@@ -111,39 +110,36 @@
   </div>
 
   <script>
-    // 🔴 เปลี่ยน URL ตรงนี้เป็น Web App URL ของคุณ
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbw5V7mKpCPiGJI-ATMpUsxhzqdx5rTLP-jYwsMlBw-DGSgV1y4WlLogt9AzRVIyD7BtUw/exec';
     
     let currentUser = ''; let currentPass = '';
 
     try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'; } catch(e) {}
 
-    // 🚨 ฟังก์ชันล็อกอินแบบรัดกุม 
     async function handleLogin() {
-      const u = document.getElementById('loginUser').value;
-      const p = document.getElementById('loginPass').value;
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPass').value.trim();
 
       if(!u || !p) {
         return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกข้อมูลให้ครบ', background: '#1E293B', color: '#fff' });
       }
 
-      Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
+      Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', text: 'โปรดรอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
       
       try {
+        // 🚨 นำ Headers ออก ปล่อยให้เบราว์เซอร์จัดการเอง ป้องกันปัญหา CORS
         const res = await fetch(GAS_API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', username: u, password: p })
         });
         
         const rawText = await res.text();
-        let data;
         
-        // 🚨 ดักจับ Error ถ้าไม่ได้ตั้งค่าให้ "ทุกคน" เข้าถึงได้
+        let data;
         try {
           data = JSON.parse(rawText);
         } catch (parseErr) {
-          throw new Error("ระบบปฏิเสธการเข้าถึง กรุณาตรวจสอบการตั้งค่า Deploy ของ Google Apps Script (ต้องเปิดให้ 'ทุกคน' เข้าถึงได้)");
+          throw new Error("ระบบตอบกลับข้อมูลผิดพลาด (อาจตั้งค่า Deploy ฝั่ง Google ผิด) ข้อความ: " + rawText.substring(0, 100));
         }
 
         if (data.success) {
@@ -153,16 +149,25 @@
           document.getElementById('view-main').classList.add('active');
           if (Notification.permission !== 'granted') Notification.requestPermission();
         } else {
-          Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: data.message, background: '#1E293B', color: '#fff' });
+          Swal.fire({ icon: 'error', title: 'ล็อกอินไม่สำเร็จ', text: data.message, background: '#1E293B', color: '#fff' });
         }
       } catch (err) {
-        Swal.fire({ icon: 'error', title: 'การเชื่อมต่อล้มเหลว', text: err.message, background: '#1E293B', color: '#fff' });
+        // 🚨 ถ้าเกิดปัญหา จะโชว์หน้าต่าง Error ชัดเจน ไม่เด้งกลับหน้าเดิมเงียบๆ แล้วครับ
+        Swal.fire({ 
+          icon: 'error', 
+          title: 'การเชื่อมต่อล้มเหลว', 
+          text: err.message, 
+          footer: 'หากยังเข้าไม่ได้ รบกวนแคปหน้าต่างแจ้งเตือนนี้มาให้ผมดูทีนะครับ',
+          background: '#1E293B', 
+          color: '#fff' 
+        });
       }
     }
 
     function logout() {
       currentUser = ''; currentPass = '';
-      document.getElementById('loginForm').reset();
+      document.getElementById('loginUser').value = 'admin';
+      document.getElementById('loginPass').value = '';
       document.getElementById('view-main').classList.remove('active');
       document.getElementById('view-login').classList.add('active');
     }
@@ -195,7 +200,6 @@
 
         const res = await fetch(GAS_API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'analyze_text', username: currentUser, password: currentPass, text: fullText.substring(0, 5000), fileName: file.name })
         });
         
