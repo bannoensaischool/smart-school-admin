@@ -121,24 +121,22 @@
       const p = document.getElementById('loginPass').value.trim();
 
       if(!u || !p) {
-        return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกข้อมูลให้ครบ', background: '#1E293B', color: '#fff' });
+        return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกข้อมูล', background: '#1E293B', color: '#fff' });
       }
 
       Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', text: 'โปรดรอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
       
       try {
-        // 🚨 เปลี่ยนมาใช้ GET Request แทน POST เพื่อทะลุบล็อก CORS ของ Google แบบ 100%
         const url = `${GAS_API_URL}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`;
         
-        const res = await fetch(url, { method: 'GET' });
-        const rawText = await res.text();
+        // บังคับให้เบราว์เซอร์วิ่งตาม Redirect ของ Google และจัดการ CORS
+        const res = await fetch(url, { 
+          method: 'GET',
+          mode: 'cors',
+          redirect: 'follow' 
+        });
         
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch (parseErr) {
-          throw new Error("Google ปฏิเสธการเข้าถึง: " + rawText.substring(0, 100));
-        }
+        const data = await res.json();
 
         if (data.success) {
           currentUser = u; currentPass = p;
@@ -150,12 +148,10 @@
           Swal.fire({ icon: 'error', title: 'ล็อกอินไม่สำเร็จ', text: data.message, background: '#1E293B', color: '#fff' });
         }
       } catch (err) {
-        // ดัก Error ทุกรูปแบบไม่ให้หน้าจอค้าง
-        let errorMsg = err.message || JSON.stringify(err);
         Swal.fire({ 
           icon: 'error', 
           title: 'การเชื่อมต่อถูกบล็อก', 
-          html: `เบราว์เซอร์ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้<br><br><span class="text-xs text-red-400">${errorMsg}</span>`, 
+          html: `เบราว์เซอร์บล็อกการรับข้อมูล<br><br><span class="text-xs text-red-400">${err.message}</span>`, 
           background: '#1E293B', 
           color: '#fff' 
         });
