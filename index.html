@@ -116,7 +116,7 @@
 
     try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'; } catch(e) {}
 
-    async function handleLogin() {
+    function handleLogin() {
       const u = document.getElementById('loginUser').value.trim();
       const p = document.getElementById('loginPass').value.trim();
 
@@ -124,20 +124,15 @@
         return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกข้อมูล', background: '#1E293B', color: '#fff' });
       }
 
-      Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', text: 'โปรดรอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
+      Swal.fire({ title: 'กำลังตรวจสอบสิทธิ์...', text: 'ทะลุกำแพงเซิร์ฟเวอร์...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1E293B', color: '#fff' });
       
-      try {
-        const url = `${GAS_API_URL}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`;
+      // 🚨 สร้างท่าไม้ตาย JSONP บังคับข้าม CORS
+      const callbackName = 'loginCallback_' + new Date().getTime();
+      
+      // เตรียมฟังก์ชันรับข้อมูลกลับ
+      window[callbackName] = function(data) {
+        delete window[callbackName]; // ล้างค่าเมื่อใช้เสร็จ
         
-        // บังคับให้เบราว์เซอร์วิ่งตาม Redirect ของ Google และจัดการ CORS
-        const res = await fetch(url, { 
-          method: 'GET',
-          mode: 'cors',
-          redirect: 'follow' 
-        });
-        
-        const data = await res.json();
-
         if (data.success) {
           currentUser = u; currentPass = p;
           Swal.close();
@@ -147,15 +142,17 @@
         } else {
           Swal.fire({ icon: 'error', title: 'ล็อกอินไม่สำเร็จ', text: data.message, background: '#1E293B', color: '#fff' });
         }
-      } catch (err) {
-        Swal.fire({ 
-          icon: 'error', 
-          title: 'การเชื่อมต่อถูกบล็อก', 
-          html: `เบราว์เซอร์บล็อกการรับข้อมูล<br><br><span class="text-xs text-red-400">${err.message}</span>`, 
-          background: '#1E293B', 
-          color: '#fff' 
-        });
-      }
+      };
+
+      // ใช้การฝัง <script> แทน fetch (เบราว์เซอร์จะไม่บล็อกสิ่งนี้)
+      const script = document.createElement('script');
+      script.src = `${GAS_API_URL}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&callback=${callbackName}`;
+      
+      script.onerror = function() {
+        Swal.fire({ icon: 'error', title: 'เชื่อมต่อล้มเหลว', text: 'ไม่สามารถโหลดข้อมูลจาก Google ได้', background: '#1E293B', color: '#fff' });
+      };
+      
+      document.body.appendChild(script);
     }
 
     function logout() {
